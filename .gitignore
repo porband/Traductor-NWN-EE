@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# PyInstaller: los ejecutables se publican como releases, no en el repositorio.
+build/
+dist/
+
+# Archivos locales y secretos
+.env
+*.log
+config_traductor.dat

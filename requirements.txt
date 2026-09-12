@@ -1,0 +1,6 @@
+deep-translator>=1.11.4
+deepl>=1.17.0
+pyautogui>=0.9.54
+pygetwindow>=0.0.9
+keyring>=24.0.0
+keyboard>=0.13.5
