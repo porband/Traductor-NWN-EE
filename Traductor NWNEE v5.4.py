@@ -86,7 +86,7 @@ except ImportError:
 
 
 APP_NAME = "Traductor NWN:EE"
-APP_VERSION = "5.4"
+APP_VERSION = "5.4.2"
 KEYRING_SERVICE = "TraductorNWN"
 KEYRING_USER = "deepl_api_key"
 MAX_CHAT_MESSAGES = 400
@@ -144,232 +144,10 @@ def find_log_file():
 
 
 # ----------------------------------------------------------------------
-# Parseo del chat: separa quien habla del mensaje, e ignora lo que no
-# tiene sentido traducir (OOC, links, lineas de sistema del log).
+# Componentes sin interfaz y paleta visual: se mantienen en nwn_translator/
+# core.py para poder probarlos y evolucionarlos sin tocar el comportamiento
+# de la ventana. La Palette vive ahi como unica fuente de verdad.
 # ----------------------------------------------------------------------
-
-class ChatParser:
-    # Marcadores de formato que NWN:EE escribe en el LOG (colores, negrita,
-    # cursiva, etc.). No forman parte del dialogo y no deben llegar al
-    # traductor ni mostrarse al usuario.
-    NWN_MARKUP_PATTERN = re.compile(r"</?c[^>]*>|</?[biu][^>]*>|<br\s*/?>", re.IGNORECASE)
-
-    IGNORE_PATTERNS = [
-        re.compile(r"^Messages for:", re.IGNORECASE),
-        re.compile(r"^-{3,}$"),
-        re.compile(r"^={3,}$"),
-        re.compile(r"^\*+$"),
-        re.compile(r"^\s*$"),
-    ]
-    OOC_PATTERNS = [
-        re.compile(r"\[OOC\]", re.IGNORECASE),
-        re.compile(r"^OOC:", re.IGNORECASE),
-    ]
-    URL_PATTERN = re.compile(r"^(https?://|www\.)", re.IGNORECASE)
-    SPEAKER_PATTERN = re.compile(r"^(\[.*?\]\s*.*?:\s*\[.*?\])\s*(.*)$")
-    SIMPLE_SPEAKER_PATTERN = re.compile(r"^(.*?:)\s*(.*)$")
-
-    def should_ignore(self, line):
-        return any(p.search(line) for p in self.IGNORE_PATTERNS)
-
-    @classmethod
-    def clean_markup(cls, text):
-        """Elimina etiquetas de formato de NWN sin tocar el contenido del texto."""
-        if not text:
-            return text
-        cleaned = cls.NWN_MARKUP_PATTERN.sub("", text)
-        # Algunos logs dejan espacios dobles al quitar etiquetas.
-        cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
-        return cleaned.strip()
-
-    def should_translate(self, text):
-        text = self.clean_markup(text)
-        if not text or not text.strip():
-            return False
-        if any(p.search(text) for p in self.OOC_PATTERNS):
-            return False
-        if self.URL_PATTERN.match(text.strip()):
-            return False
-        # si no tiene ninguna letra/numero, no vale la pena mandarlo a traducir
-        if not any(ch.isalnum() for ch in text):
-            return False
-        return True
-
-    def _is_plausible_speaker(self, speaker):
-        value = speaker.rstrip(":").strip()
-        if not value or len(value) > 80:
-            return False
-        low = value.lower()
-        blocked = ("[system", "messages for", "server", "client", "error", "warning")
-        if low.startswith(blocked):
-            return False
-        if "http://" in low or "https://" in low or "www." in low:
-            return False
-        return any(ch.isalpha() for ch in value)
-
-    def parse(self, line):
-        """Devuelve (speaker_info_o_None, texto) o None si hay que ignorar la linea."""
-        clean = self.clean_markup(line.strip())
-        if self.should_ignore(clean):
-            return None
-        # Filtra primero las líneas que nunca deben entrar al motor:
-        # OOC, URLs, vacías o contenido sin caracteres alfanuméricos.
-        if not self.should_translate(clean):
-            return None
-
-        match = self.SPEAKER_PATTERN.match(clean)
-        if match:
-            speaker, text = match.group(1).strip(), match.group(2).strip()
-            if self._is_plausible_speaker(speaker) and self.should_translate(text):
-                return speaker, text
-            return None, clean
-
-        match = self.SIMPLE_SPEAKER_PATTERN.match(clean)
-        if match:
-            speaker, text = match.group(1).strip(), match.group(2).strip()
-            if self._is_plausible_speaker(speaker) and self.should_translate(text):
-                return speaker, text
-            return None, clean
-
-        return None, clean
-
-
-# ----------------------------------------------------------------------
-# Motor de traduccion: cache + reintentos + Google/DeepL
-# ----------------------------------------------------------------------
-
-class TranslationEngine:
-    def __init__(self):
-        self.mode = "Google"
-        self.deepl_translator = None
-        self.google_translators = {}
-        self.cache = {}
-        self.cache_lock = threading.Lock()
-        self.max_cache_entries = 1000
-
-    def clear_cache(self):
-        with self.cache_lock:
-            self.cache.clear()
-
-    def get_cache_size(self):
-        with self.cache_lock:
-            return len(self.cache)
-
-    def set_google(self):
-        if GoogleTranslator is None:
-            raise RuntimeError(
-                "La biblioteca 'deep-translator' no esta instalada.\n"
-                "Ejecuta: python -m pip install deep-translator"
-            )
-        self.mode = "Google"
-        self.deepl_translator = None
-        with self.cache_lock:
-            self.google_translators.clear()
-
-    def set_deepl(self, api_key):
-        if deepl is None:
-            raise RuntimeError("La biblioteca 'deepl' no esta instalada.\nEjecuta: python -m pip install deepl")
-        api_key = api_key.strip()
-        if not api_key:
-            raise RuntimeError("La API Key de DeepL esta vacia.")
-        translator = deepl.Translator(api_key)
-        translator.get_usage()  # valida la key
-        self.deepl_translator = translator
-        self.mode = "DeepL"
-
-    def translate(self, text, source_lang, target_lang, use_cache=True):
-        if not text or not text.strip():
-            return text
-
-        cache_key = (text, source_lang, target_lang, self.mode)
-        if use_cache:
-            with self.cache_lock:
-                cached = self.cache.get(cache_key)
-            if cached is not None:
-                return cached
-
-        last_error = None
-        for attempt in range(3):
-            try:
-                if self.mode == "DeepL":
-                    if not self.deepl_translator:
-                        raise RuntimeError("DeepL no esta configurado.")
-                    deepl_target = "ES" if target_lang.lower().startswith("es") else "EN-US"
-                    result = self.deepl_translator.translate_text(text, target_lang=deepl_target)
-                    translated = result.text
-                else:
-                    with self.cache_lock:
-                        google = self.google_translators.get((source_lang, target_lang))
-                    if google is None:
-                        google = GoogleTranslator(source=source_lang, target=target_lang)
-                        with self.cache_lock:
-                            self.google_translators.setdefault(
-                                (source_lang, target_lang), google
-                            )
-                    translated = google.translate(text)
-
-                if use_cache:
-                    with self.cache_lock:
-                        if len(self.cache) >= self.max_cache_entries:
-                            oldest_key = next(iter(self.cache), None)
-                            if oldest_key is not None:
-                                self.cache.pop(oldest_key, None)
-                        self.cache[cache_key] = translated
-                return translated
-            except Exception as e:
-                last_error = e
-                time.sleep(0.3 * (2 ** attempt))
-
-        raise RuntimeError(f"fallo la traduccion tras 3 intentos: {last_error}")
-
-
-# ----------------------------------------------------------------------
-# Paleta visual
-# ----------------------------------------------------------------------
-
-class Palette:
-    # Tema "arcano": inspirado en manuscritos y magia de fantasia/D&D,
-    # mas acorde a la ambientacion de Neverwinter Nights que un dashboard
-    # generico. Dorado antiguo + violeta arcano sobre fondo medianoche.
-    bg = "#150f1f"
-    bg_panel = "#1f1830"
-    bg_input = "#291f3d"
-    border = "#3a2f52"
-    text_main = "#f1e8d8"       # blanco pergamino
-    text_dim = "#bcaed8"
-    accent = "#d9a441"          # dorado antiguo - acciones principales
-    accent_hover = "#f0bd5c"
-
-    # Colores claros y diferenciables para los nombres de personajes.
-    # Se asignan de forma estable durante la sesion a cada hablante distinto.
-    speaker_colors = (
-        "#66D9FF",  # azul cielo
-        "#FF8A8A",  # rojo coral
-        "#7DFF9B",  # verde menta
-        "#FFD166",  # dorado claro
-        "#D7A6FF",  # violeta claro
-        "#FF9F5A",  # naranja
-        "#6FE7DD",  # turquesa
-        "#FF8EDB",  # rosa
-        "#B8E986",  # lima suave
-        "#9DB7FF",  # azul lavanda
-    )
-    speaker = "#9DB7FF"         # color de respaldo para el nombre
-    spanish = "#FFF3D1"         # texto traducido: alto contraste
-    english = "#CDBDFF"          # original: mas legible que el violeta anterior
-    system = "#AFA3C8"
-    warning = "#F1B56A"
-    error = "#FF7770"
-    outgoing = "#FFD28A"
-    separator = "#2a2140"
-
-    # En modo invisible el fondo desaparece, pero los nombres conservan sus
-    # colores para poder identificar a cada hablante sobre el terreno.
-    overlay_text = "#FFF7DA"
-
-
-# Componentes sin interfaz: se mantienen separados para poder probarlos y
-# evolucionarlos sin tocar el comportamiento de la ventana.
 from nwn_translator.core import ChatParser, Palette, TranslationEngine
 
 
@@ -512,9 +290,10 @@ class TranslatorApp:
             except Exception:
                 pass
 
-        # En ventana compacta solo dejamos encabezado + chat + escritura.
-        header.pack(side=tk.TOP, fill=tk.X, padx=10, pady=(8, 4))
-
+        # En ventana compacta ocultamos tambien el encabezado (titulo +
+        # boton de modo invisible): en una ventana chica ese renglon se
+        # comia una porcion grande de la pantalla. F9 y el atajo global
+        # siguen activando el modo invisible aunque el boton no se vea.
         input_frame.configure(bg=self.pal.bg, height=48)
         input_frame.pack_propagate(False)
         input_frame.pack(side=tk.BOTTOM, padx=10, pady=(0, 8), fill=tk.X)
@@ -533,7 +312,7 @@ class TranslatorApp:
         except Exception:
             pass
         style.configure("TButton", font=("Calibri", 9), padding=6)
-        style.configure("Accent.TButton", background=self.pal.accent, foreground="#2a1a05")
+        style.configure("Accent.TButton", background=self.pal.accent, foreground=self.pal.accent_text)
         style.map("Accent.TButton", background=[("active", self.pal.accent_hover)])
         style.configure("TCheckbutton", background=self.pal.bg_panel, foreground=self.pal.text_main,
                          font=("Calibri", 9))
@@ -584,7 +363,8 @@ class TranslatorApp:
                                  fg=pal.text_main, font=("Calibri", 11), relief=tk.FLAT,
                                  yscrollcommand=scrollbar.set, padx=12, pady=10, bd=0,
                                  highlightthickness=1, highlightbackground=pal.border,
-                                 highlightcolor=pal.border)
+                                 highlightcolor=pal.accent, selectbackground=pal.selection,
+                                 selectforeground=pal.text_main)
         self.chat_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.chat_box.yview)
         self.chat_box.bind("<Double-Button-1>", self.copy_speaker_from_click)
@@ -605,12 +385,13 @@ class TranslatorApp:
         self.input_box = tk.Entry(input_frame, bg=pal.bg_input, fg=pal.text_main,
                                    insertbackground=pal.text_main, font=("Calibri", 11),
                                    relief=tk.FLAT, highlightthickness=1,
-                                   highlightbackground=pal.border, highlightcolor=pal.accent)
+                                   highlightbackground=pal.border, highlightcolor=pal.accent,
+                                   selectbackground=pal.selection, selectforeground=pal.text_main)
         self.input_box.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=8, padx=(0, 8))
         self.input_box.bind("<Return>", self.send_to_game)
 
         self.send_button = tk.Button(input_frame, text="Enviar", command=lambda: self.send_to_game(None),
-                                      bg=pal.accent, fg="#2a1a05", activebackground=pal.accent_hover,
+                                      bg=pal.accent, fg=pal.accent_text, activebackground=pal.accent_hover,
                                       relief=tk.FLAT, font=("Calibri", 10, "bold"), bd=0, padx=16,
                                       cursor="hand2")
         self.send_button.pack(side=tk.RIGHT)
@@ -659,7 +440,7 @@ class TranslatorApp:
 
         btns = tk.Frame(inner, bg=pal.bg_panel)
         btns.grid(row=1, column=1, padx=(8, 0))
-        tk.Button(btns, text="Activar DeepL", command=self.activate_deepl, bg=pal.accent, fg="#2a1a05",
+        tk.Button(btns, text="Activar DeepL", command=self.activate_deepl, bg=pal.accent, fg=pal.accent_text,
                   relief=tk.FLAT, font=("Calibri", 9, "bold"), bd=0, padx=10, pady=4,
                   cursor="hand2").pack(side=tk.LEFT, padx=(0, 6))
         tk.Button(btns, text="Usar Google", command=self.use_google, bg=pal.bg_input, fg=pal.text_main,
@@ -1144,7 +925,7 @@ class TranslatorApp:
     def _transparent_tag_color():
         # El separador es casi imperceptible en modo invisible.
         # Este color no coincide con el transparentcolor de la ventana.
-        return "#202030"
+        return "#1B1B1D"
 
     def display_chat(self, data):
         self.chat_message_counter += 1

@@ -31,7 +31,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='Traductor NWNEE v5.4',
+    name='Traductor NWNEE v5.4.2',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

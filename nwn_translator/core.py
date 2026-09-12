@@ -135,9 +135,43 @@ class TranslationEngine:
 
 
 class Palette:
-    bg = "#150f1f"; bg_panel = "#1f1830"; bg_input = "#291f3d"; border = "#3a2f52"
-    text_main = "#f1e8d8"; text_dim = "#bcaed8"; accent = "#d9a441"; accent_hover = "#f0bd5c"
-    speaker_colors = ("#66D9FF", "#FF8A8A", "#7DFF9B", "#FFD166", "#D7A6FF", "#FF9F5A", "#6FE7DD", "#FF8EDB", "#B8E986", "#9DB7FF")
-    speaker = "#9DB7FF"; spanish = "#FFF3D1"; english = "#CDBDFF"; system = "#AFA3C8"
-    warning = "#F1B56A"; error = "#FF7770"; outgoing = "#FFD28A"; separator = "#2a2140"
-    overlay_text = "#FFF7DA"
+    # Tema "grafito": capas de gris neutro inspiradas en macOS en modo oscuro
+    # (systemGray6/5/4), con violeta suave como unico acento de marca en vez
+    # del azul generico de cualquier dashboard.
+    bg = "#1C1C1E"          # systemGray6 dark: fondo de ventana
+    bg_panel = "#242426"    # systemGray5 dark: paneles y superficies
+    bg_input = "#323234"    # systemGray4 dark: campos de entrada
+    border = "#3D3D40"      # separador sutil entre superficies
+    text_main = "#F5F5F7"   # label primario, casi blanco
+    text_dim = "#98989D"    # label secundario, gris medio
+    accent = "#A78BFA"      # violeta suave: acciones principales
+    accent_hover = "#BFA6FF"
+    accent_text = "#1C1C1E"  # texto oscuro legible sobre el acento claro
+    selection = "#4B4470"    # fondo de seleccion de texto, coherente con el acento
+
+    # Colores claros y diferenciables para los nombres de personajes.
+    # Se asignan de forma estable durante la sesion a cada hablante distinto.
+    speaker_colors = (
+        "#7BD6D0",  # turquesa
+        "#FF9B8E",  # coral
+        "#A9D18E",  # verde salvia
+        "#F2C27B",  # ambar
+        "#C4A7FF",  # violeta claro
+        "#FFB36B",  # naranja suave
+        "#8DD7F7",  # celeste
+        "#F3A7C5",  # rosa
+        "#CEE58B",  # lima suave
+        "#AEBBFF",  # lavanda
+    )
+    speaker = "#AEBBFF"          # color de respaldo para el nombre
+    spanish = "#F5F5F7"          # texto traducido: alto contraste, es lo principal
+    english = "#98989D"          # original: referencia secundaria, mas discreto
+    system = "#98989D"
+    warning = "#F2C27B"
+    error = "#FF6961"
+    outgoing = "#D2C3FF"
+    separator = "#2A2A2D"
+
+    # En modo invisible el fondo desaparece, pero los nombres conservan sus
+    # colores para poder identificar a cada hablante sobre el terreno.
+    overlay_text = "#F5F5F7"
