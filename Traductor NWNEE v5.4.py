@@ -143,6 +143,202 @@ def find_log_file():
     return None
 
 
+LANG_FILE = os.path.join(CONFIG_DIR, "idioma.txt")
+TRANSLATE_DIR_FILE = os.path.join(CONFIG_DIR, "direccion_traduccion.txt")
+
+# Todos los textos de la interfaz en los dos idiomas soportados. "otro" en
+# los comentarios se refiere siempre al idioma complementario (si mi idioma
+# es espanol, el otro es ingles, y viceversa) - asi la direccion de
+# traduccion se invierte automaticamente segun lo que elija cada persona.
+TEXTS = {
+    "es": {
+        "engine_prefix": "Motor",
+        "engine_google": "GOOGLE",
+        "engine_deepl": "DEEPL",
+        "invisible_btn": "\U0001F441  Modo invisible (F9)",
+        "log_prefix": "LOG",
+        "game_prefix": "JUEGO",
+        "searching": "buscando...",
+        "connected": "conectado",
+        "waiting": "esperando...",
+        "no_pygetwindow": "sin pygetwindow",
+        "send_btn": "Enviar",
+        "keep_on_top": "Mantener encima",
+        "auto_send": "Envio automatico al juego",
+        "select_log_btn": "Seleccionar LOG",
+        "copy_last_btn": "Copiar ultimo",
+        "clear_chat_btn": "Limpiar chat",
+        "pause_btn": "Pausar traduccion",
+        "resume_btn": "Reanudar traduccion",
+        "config_frame_title": " Motor de traduccion (DeepL opcional) ",
+        "deepl_key_label": "DeepL API Key:",
+        "activate_deepl_btn": "Activar DeepL",
+        "use_google_btn": "Usar Google",
+        "my_prefix": "ESP",
+        "other_prefix": "ENG",
+        "sent_to_game": "Enviado a Neverwinter",
+        "auto_send_off": "Envio automatico desactivado",
+        "select_log_dialog_title": "Seleccionar log de Neverwinter",
+        "log_selected": "LOG seleccionado: {name}",
+        "log_selected_msg": "[Sistema]: LOG seleccionado manualmente: {path}\n",
+        "name_copied": "[Sistema]: Nombre copiado: {speaker}\n",
+        "no_translation_yet": "Todavia no hay una traduccion.",
+        "last_translation_copied": "[Sistema]: Ultima traduccion copiada al portapapeles.\n",
+        "engine_changed_google": "[Sistema]: Motor cambiado a Google Translate.\n",
+        "translation_paused_msg": "[Sistema]: Traduccion pausada. El LOG sigue siendo vigilado, pero los mensajes nuevos no se traduciran.\n",
+        "translation_resumed_msg": "[Sistema]: Traduccion reanudada.\n",
+        "searching_log_status": "[Sistema]: Buscando el archivo log de Neverwinter...\n",
+        "log_detected_status": "LOG de Neverwinter detectado. Traduciendo en tiempo real.\n",
+        "log_connected_status": "LOG conectado. Traduccion en tiempo real.\n",
+        "log_reset_status": "El LOG se reinicio (nueva sesion de Neverwinter). Reconectando...\n",
+        "deepl_key_missing": "Introduce una API Key de DeepL.",
+        "deepl_activated_ok": "DeepL activado correctamente.",
+        "deepl_activate_failed": "No se pudo activar DeepL: {error}",
+        "deepl_auto_ok": "DeepL configurado correctamente.",
+        "deepl_auto_failed": "DeepL no pudo activarse automaticamente: {error}",
+        "google_activate_failed": "No se pudo activar Google Translate:\n{error}",
+        "system_prefix": "Sistema",
+        "keyring_read_failed": "[Sistema]: No se pudo leer la config de DeepL via keyring: {error}\n",
+        "deepl_save_failed": "No se pudo guardar la API Key: {error}",
+        "no_pygetwindow_error": "Falta pygetwindow.\nEjecuta: python -m pip install pygetwindow",
+        "no_pyautogui_error": "Falta PyAutoGUI.\nEjecuta: python -m pip install pyautogui",
+        "window_not_found_error": "No se encontro la ventana de Neverwinter Nights.\nAbre Neverwinter Nights y vuelve a intentarlo.",
+        "hotkey_register_failed": "[Sistema]: No se pudo registrar el atajo global F9 ({error}). Se usara el detector nativo de Windows.\n",
+        "hotkey_registered_ok": "[Sistema]: Atajo global F9 activado mediante Windows (sin libreria 'keyboard').\n",
+        "hotkey_unavailable": "[Sistema]: Atajo global F9 no disponible en este sistema. F9 funcionara con esta ventana en foco.\n",
+        "log_read_error": "Error leyendo el LOG: {error}",
+        "queue_full_error": "La cola de traduccion esta llena; se descarto un mensaje.",
+        "translate_error": "Error traduciendo '{snippet}': {error}",
+        "send_prepare_error": "Error preparando el envio: {error}",
+        "lang_picker_title": "Idioma / Language",
+        "lang_picker_prompt": "Elegi tu idioma / Choose your language",
+        "lang_btn_es": "Espa\u00f1ol",
+        "lang_btn_en": "English",
+        "lang_toggle_btn": "ES/EN",
+    },
+    "en": {
+        "engine_prefix": "Engine",
+        "engine_google": "GOOGLE",
+        "engine_deepl": "DEEPL",
+        "invisible_btn": "\U0001F441  Invisible mode (F9)",
+        "log_prefix": "LOG",
+        "game_prefix": "GAME",
+        "searching": "searching...",
+        "connected": "connected",
+        "waiting": "waiting...",
+        "no_pygetwindow": "pygetwindow missing",
+        "send_btn": "Send",
+        "keep_on_top": "Keep on top",
+        "auto_send": "Auto-send to game",
+        "select_log_btn": "Select LOG",
+        "copy_last_btn": "Copy last",
+        "clear_chat_btn": "Clear chat",
+        "pause_btn": "Pause translation",
+        "resume_btn": "Resume translation",
+        "config_frame_title": " Translation engine (DeepL optional) ",
+        "deepl_key_label": "DeepL API Key:",
+        "activate_deepl_btn": "Activate DeepL",
+        "use_google_btn": "Use Google",
+        "my_prefix": "ENG",
+        "other_prefix": "ESP",
+        "sent_to_game": "Sent to Neverwinter",
+        "auto_send_off": "Auto-send disabled",
+        "select_log_dialog_title": "Select the Neverwinter log",
+        "log_selected": "LOG selected: {name}",
+        "log_selected_msg": "[System]: LOG manually selected: {path}\n",
+        "name_copied": "[System]: Name copied: {speaker}\n",
+        "no_translation_yet": "There's no translation yet.",
+        "last_translation_copied": "[System]: Last translation copied to clipboard.\n",
+        "engine_changed_google": "[System]: Engine switched to Google Translate.\n",
+        "translation_paused_msg": "[System]: Translation paused. The LOG is still being watched, but new messages won't be translated.\n",
+        "translation_resumed_msg": "[System]: Translation resumed.\n",
+        "searching_log_status": "[System]: Looking for the Neverwinter log file...\n",
+        "log_detected_status": "Neverwinter LOG detected. Translating in real time.\n",
+        "log_connected_status": "LOG connected. Real-time translation.\n",
+        "log_reset_status": "The LOG was reset (new Neverwinter session). Reconnecting...\n",
+        "deepl_key_missing": "Enter a DeepL API Key.",
+        "deepl_activated_ok": "DeepL activated successfully.",
+        "deepl_activate_failed": "Couldn't activate DeepL: {error}",
+        "deepl_auto_ok": "DeepL configured successfully.",
+        "deepl_auto_failed": "DeepL couldn't be activated automatically: {error}",
+        "google_activate_failed": "Couldn't activate Google Translate:\n{error}",
+        "system_prefix": "System",
+        "keyring_read_failed": "[System]: Couldn't read the DeepL config via keyring: {error}\n",
+        "deepl_save_failed": "Couldn't save the API Key: {error}",
+        "no_pygetwindow_error": "pygetwindow is missing.\nRun: python -m pip install pygetwindow",
+        "no_pyautogui_error": "PyAutoGUI is missing.\nRun: python -m pip install pyautogui",
+        "window_not_found_error": "Couldn't find the Neverwinter Nights window.\nOpen Neverwinter Nights and try again.",
+        "hotkey_register_failed": "[System]: Couldn't register the global F9 shortcut ({error}). Using the native Windows detector instead.\n",
+        "hotkey_registered_ok": "[System]: Global F9 shortcut enabled via Windows (no 'keyboard' library).\n",
+        "hotkey_unavailable": "[System]: Global F9 shortcut not available on this system. F9 will work while this window is focused.\n",
+        "log_read_error": "Error reading the LOG: {error}",
+        "queue_full_error": "The translation queue is full; a message was dropped.",
+        "translate_error": "Error translating '{snippet}': {error}",
+        "send_prepare_error": "Error preparing the message to send: {error}",
+        "lang_picker_title": "Idioma / Language",
+        "lang_picker_prompt": "Elegi tu idioma / Choose your language",
+        "lang_btn_es": "Espa\u00f1ol",
+        "lang_btn_en": "English",
+        "lang_toggle_btn": "ES/EN",
+    },
+}
+
+# Lista unica de idiomas soportados: (codigo, nombre nativo). Tanto el
+# selector de idioma de la interfaz como los dos selectores del traductor
+# se arman a partir de esta misma lista, asi que agregar un idioma nuevo
+# el dia de manana es una sola linea aca, nada mas.
+LANGUAGE_OPTIONS = [
+    ("es", "Español"),
+    ("en", "English"),
+]
+LANGUAGE_NAME_BY_CODE = dict(LANGUAGE_OPTIONS)
+LANGUAGE_CODE_BY_NAME = {name: code for code, name in LANGUAGE_OPTIONS}
+# Abreviatura corta para las etiquetas del chat (ESP/ENG), no depende del
+# idioma de la interfaz sino de los idiomas elegidos en el traductor.
+LANGUAGE_ABBR = {"es": "ESP", "en": "ENG"}
+
+
+def load_saved_lang():
+    try:
+        with open(LANG_FILE, "r", encoding="utf-8") as f:
+            value = f.read().strip()
+            if value in TEXTS:
+                return value
+    except Exception:
+        pass
+    return None
+
+
+def save_lang(lang):
+    try:
+        ensure_config_dir()
+        with open(LANG_FILE, "w", encoding="utf-8") as f:
+            f.write(lang)
+    except Exception:
+        pass
+
+
+def load_saved_translate_dir():
+    valid_codes = set(LANGUAGE_NAME_BY_CODE)
+    try:
+        with open(TRANSLATE_DIR_FILE, "r", encoding="utf-8") as f:
+            source, _, target = f.read().strip().partition(",")
+            if source in valid_codes and target in valid_codes and source != target:
+                return source, target
+    except Exception:
+        pass
+    return None
+
+
+def save_translate_dir(source, target):
+    try:
+        ensure_config_dir()
+        with open(TRANSLATE_DIR_FILE, "w", encoding="utf-8") as f:
+            f.write(f"{source},{target}")
+    except Exception:
+        pass
+
+
 # ----------------------------------------------------------------------
 # Componentes sin interfaz y paleta visual: se mantienen en nwn_translator/
 # core.py para poder probarlos y evolucionarlos sin tocar el comportamiento
@@ -169,6 +365,27 @@ class TranslatorApp:
         # minima.
         self.root.minsize(360, 180)
         self.root.configure(bg=self.pal.bg)
+
+        # Idioma de la interfaz (botones, etiquetas, mensajes de sistema).
+        # En el primer arranque (sin nada guardado) se pregunta con un
+        # dialogo; despues queda recordado.
+        self.my_lang = load_saved_lang()
+        if self.my_lang is None:
+            self.my_lang = self._prompt_language()
+            save_lang(self.my_lang)
+
+        # Direccion del traductor: de que idioma vienen los mensajes del
+        # juego y a que idioma se traduce lo que vos escribis (y viceversa
+        # al mandarlo). Es independiente del idioma de la interfaz -
+        # podes tener la app en ingles y traducir de espanol a frances,
+        # por ejemplo, el dia que se agreguen mas idiomas. Por defecto
+        # arranca en el sentido complementario al idioma de la interfaz.
+        saved_dir = load_saved_translate_dir()
+        if saved_dir:
+            self.translate_source_lang, self.translate_target_lang = saved_dir
+        else:
+            self.translate_target_lang = self.my_lang
+            self.translate_source_lang = "en" if self.my_lang == "es" else "es"
 
         self.engine = TranslationEngine()
         self.parser = ChatParser()
@@ -222,6 +439,97 @@ class TranslatorApp:
         self.setup_global_hotkey()
 
     # ------------------------------------------------------------------
+    # Idioma de la interfaz
+    # ------------------------------------------------------------------
+
+    def t(self, key, **kwargs):
+        """Devuelve el texto de la interfaz en el idioma elegido por la persona."""
+        text = TEXTS[self.my_lang].get(key, key)
+        return text.format(**kwargs) if kwargs else text
+
+    def _prompt_language(self):
+        """Ventana de bienvenida: se muestra solo si no hay idioma guardado."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title(TEXTS["es"]["lang_picker_title"])
+        dialog.configure(bg=self.pal.bg)
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        tk.Label(dialog, text=TEXTS["es"]["lang_picker_prompt"],
+                 font=("Calibri", 12, "bold"), bg=self.pal.bg, fg=self.pal.text_main
+                 ).pack(padx=36, pady=(26, 18))
+
+        choice = {"lang": "es"}
+
+        def pick(lang):
+            choice["lang"] = lang
+            dialog.destroy()
+
+        btns = tk.Frame(dialog, bg=self.pal.bg)
+        btns.pack(pady=(0, 26), padx=36)
+        tk.Button(btns, text=TEXTS["es"]["lang_btn_es"], width=12, bg=self.pal.accent,
+                  fg=self.pal.accent_text, relief=tk.FLAT, font=("Calibri", 10, "bold"),
+                  bd=0, pady=8, cursor="hand2", command=lambda: pick("es")).pack(side=tk.LEFT, padx=6)
+        tk.Button(btns, text=TEXTS["es"]["lang_btn_en"], width=12, bg=self.pal.bg_input,
+                  fg=self.pal.text_main, relief=tk.FLAT, font=("Calibri", 10, "bold"),
+                  bd=0, pady=8, cursor="hand2", command=lambda: pick("en")).pack(side=tk.LEFT, padx=6)
+
+        dialog.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (dialog.winfo_width() // 2)
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (dialog.winfo_height() // 2)
+        dialog.geometry(f"+{max(x, 0)}+{max(y, 0)}")
+
+        self.root.wait_window(dialog)
+        return choice["lang"]
+
+    def on_interface_lang_selected(self, event=None):
+        """Se dispara al elegir un idioma en el combobox de la interfaz."""
+        selected_name = self.interface_lang_combo.get()
+        code = LANGUAGE_CODE_BY_NAME.get(selected_name)
+        if code is None or code == self.my_lang:
+            return
+        self.my_lang = code
+        save_lang(self.my_lang)
+        self._refresh_language_texts()
+
+    def on_translate_lang_selected(self, event=None):
+        """Se dispara al elegir un idioma en cualquiera de los dos combos del traductor."""
+        source_code = LANGUAGE_CODE_BY_NAME.get(self.source_lang_combo.get())
+        target_code = LANGUAGE_CODE_BY_NAME.get(self.target_lang_combo.get())
+        if source_code is None or target_code is None or source_code == target_code:
+            return
+        self.translate_source_lang = source_code
+        self.translate_target_lang = target_code
+        save_translate_dir(source_code, target_code)
+
+    def swap_translate_direction(self):
+        """Botón ⇄: invierte de/hacia que idioma traduce, en cualquier momento."""
+        self.translate_source_lang, self.translate_target_lang = (
+            self.translate_target_lang, self.translate_source_lang)
+        save_translate_dir(self.translate_source_lang, self.translate_target_lang)
+        self.source_lang_combo.set(LANGUAGE_NAME_BY_CODE[self.translate_source_lang])
+        self.target_lang_combo.set(LANGUAGE_NAME_BY_CODE[self.translate_target_lang])
+
+    def _refresh_language_texts(self):
+        self.invisible_btn.config(text=self.t("invisible_btn"))
+        self.update_engine_label()
+        self.log_status(self._last_log_status_key, self._last_log_status_found, **self._last_log_status_kwargs)
+        self.update_game_status(self._last_game_status_is_open, self._last_game_status_note)
+        self.send_button.config(text=self.t("send_btn"))
+        self.keep_on_top_cb.config(text=self.t("keep_on_top"))
+        self.auto_send_cb.config(text=self.t("auto_send"))
+        self.select_log_button.config(text=self.t("select_log_btn"))
+        self.copy_last_button.config(text=self.t("copy_last_btn"))
+        self.clear_chat_button.config(text=self.t("clear_chat_btn"))
+        self.pause_button.config(text=self.t("resume_btn") if self.translation_paused else self.t("pause_btn"))
+        self.config_frame.config(text=self.t("config_frame_title"))
+        self.deepl_key_label.config(text=self.t("deepl_key_label"))
+        self.activate_deepl_button.config(text=self.t("activate_deepl_btn"))
+        self.use_google_button.config(text=self.t("use_google_btn"))
+        self.interface_lang_combo.set(LANGUAGE_NAME_BY_CODE[self.my_lang])
+
+    # ------------------------------------------------------------------
     # Estilos y construccion de la interfaz
     # ------------------------------------------------------------------
 
@@ -262,12 +570,12 @@ class TranslatorApp:
             self._repack_normal_widgets()
 
     def _apply_compact_layout(self):
-        header, controls, config_frame = self._normal_mode_widgets
+        header, translate_bar, controls, config_frame = self._normal_mode_widgets
         input_frame = self._input_frame
         chat_frame = self.chat_box.master
 
         # Liberar packs actuales.
-        for widget in (header, controls, config_frame, chat_frame, input_frame):
+        for widget in (header, translate_bar, controls, config_frame, chat_frame, input_frame):
             try:
                 widget.pack_forget()
             except Exception:
@@ -321,6 +629,16 @@ class TranslatorApp:
                          font=("Calibri", 9, "bold"), bordercolor=self.pal.border)
         style.configure("TLabelframe.Label", background=self.pal.bg_panel, foreground=self.pal.text_dim)
         style.configure("TFrame", background=self.pal.bg_panel)
+        style.configure("Lang.TCombobox", fieldbackground=self.pal.bg_input, background=self.pal.bg_input,
+                         foreground=self.pal.text_main, arrowcolor=self.pal.text_dim,
+                         bordercolor=self.pal.border, lightcolor=self.pal.bg_input, darkcolor=self.pal.bg_input,
+                         padding=4)
+        style.map("Lang.TCombobox", fieldbackground=[("readonly", self.pal.bg_input)],
+                  foreground=[("readonly", self.pal.text_main)])
+        self.root.option_add("*TCombobox*Listbox.background", self.pal.bg_input)
+        self.root.option_add("*TCombobox*Listbox.foreground", self.pal.text_main)
+        self.root.option_add("*TCombobox*Listbox.selectBackground", self.pal.accent)
+        self.root.option_add("*TCombobox*Listbox.selectForeground", self.pal.accent_text)
 
     def create_interface(self):
         pal = self.pal
@@ -333,24 +651,58 @@ class TranslatorApp:
                           bg=pal.bg, fg=pal.text_main)
         title.pack(side=tk.LEFT)
 
-        self.engine_label = tk.Label(header, text="Motor: GOOGLE", font=("Calibri", 9, "bold"),
+        self.engine_label = tk.Label(header, text="", font=("Calibri", 9, "bold"),
                                       bg=pal.bg, fg=pal.accent)
         self.engine_label.pack(side=tk.LEFT, padx=(12, 0))
 
-        self.invisible_btn = tk.Button(header, text="\U0001F441  Modo invisible (F9)",
+        self.interface_lang_combo = ttk.Combobox(header, style="Lang.TCombobox", state="readonly",
+                                                  width=9, font=("Calibri", 9),
+                                                  values=[name for _, name in LANGUAGE_OPTIONS])
+        self.interface_lang_combo.set(LANGUAGE_NAME_BY_CODE[self.my_lang])
+        self.interface_lang_combo.bind("<<ComboboxSelected>>", self.on_interface_lang_selected)
+        self.interface_lang_combo.pack(side=tk.RIGHT, padx=(8, 0))
+
+        self.invisible_btn = tk.Button(header, text="",
                                         command=self.toggle_invisible_mode,
                                         bg=pal.bg_panel, fg=pal.text_main, activebackground=pal.border,
                                         activeforeground=pal.text_main, relief=tk.FLAT, font=("Calibri", 9),
                                         padx=10, pady=4, bd=0, cursor="hand2")
         self.invisible_btn.pack(side=tk.RIGHT)
 
-        self.status_label = tk.Label(header, text="LOG: buscando...", font=("Calibri", 9),
+        self.status_label = tk.Label(header, text="", font=("Calibri", 9),
                                       bg=pal.bg, fg=pal.warning)
         self.status_label.pack(side=tk.RIGHT, padx=(0, 14))
 
-        self.game_status_label = tk.Label(header, text="JUEGO: buscando...", font=("Calibri", 9),
+        self.game_status_label = tk.Label(header, text="", font=("Calibri", 9),
                                            bg=pal.bg, fg=pal.warning)
         self.game_status_label.pack(side=tk.RIGHT, padx=(0, 14))
+
+        # --- Barra del traductor: de que idioma a que idioma, con boton
+        # para invertir al instante (independiente del idioma de la
+        # interfaz de arriba). Funciona como Google Translate: elegis los
+        # dos idiomas y podes cambiarlos en cualquier momento.
+        translate_bar = tk.Frame(self.root, bg=pal.bg)
+        translate_bar.pack(fill=tk.X, padx=14, pady=(0, 6))
+
+        self.source_lang_combo = ttk.Combobox(translate_bar, style="Lang.TCombobox", state="readonly",
+                                               width=11, font=("Calibri", 9),
+                                               values=[name for _, name in LANGUAGE_OPTIONS])
+        self.source_lang_combo.set(LANGUAGE_NAME_BY_CODE[self.translate_source_lang])
+        self.source_lang_combo.bind("<<ComboboxSelected>>", self.on_translate_lang_selected)
+        self.source_lang_combo.pack(side=tk.LEFT)
+
+        self.swap_lang_btn = tk.Button(translate_bar, text="\u21C4", command=self.swap_translate_direction,
+                                        bg=pal.bg, fg=pal.accent, activebackground=pal.bg_panel,
+                                        activeforeground=pal.accent_hover, relief=tk.FLAT,
+                                        font=("Calibri", 12, "bold"), bd=0, padx=10, cursor="hand2")
+        self.swap_lang_btn.pack(side=tk.LEFT)
+
+        self.target_lang_combo = ttk.Combobox(translate_bar, style="Lang.TCombobox", state="readonly",
+                                               width=11, font=("Calibri", 9),
+                                               values=[name for _, name in LANGUAGE_OPTIONS])
+        self.target_lang_combo.set(LANGUAGE_NAME_BY_CODE[self.translate_target_lang])
+        self.target_lang_combo.bind("<<ComboboxSelected>>", self.on_translate_lang_selected)
+        self.target_lang_combo.pack(side=tk.LEFT)
 
         # --- Chat ---
         chat_frame = tk.Frame(self.root, bg=pal.bg)
@@ -390,7 +742,7 @@ class TranslatorApp:
         self.input_box.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=8, padx=(0, 8))
         self.input_box.bind("<Return>", self.dispatch_to_game)
 
-        self.send_button = tk.Button(input_frame, text="Enviar", command=lambda: self.dispatch_to_game(None),
+        self.send_button = tk.Button(input_frame, text="", command=lambda: self.dispatch_to_game(None),
                                       bg=pal.accent, fg=pal.accent_text, activebackground=pal.accent_hover,
                                       relief=tk.FLAT, font=("Calibri", 10, "bold"), bd=0, padx=16,
                                       cursor="hand2")
@@ -400,22 +752,26 @@ class TranslatorApp:
         controls = tk.Frame(self.root, bg=pal.bg)
         controls.pack(padx=14, pady=(0, 8), fill=tk.X)
 
-        ttk.Checkbutton(controls, text="Mantener encima", variable=self.keep_on_top,
-                         command=self.toggle_topmost).pack(side=tk.LEFT, padx=(0, 12))
-        ttk.Checkbutton(controls, text="Envio automatico al juego", variable=self.auto_send
-                         ).pack(side=tk.LEFT, padx=(0, 12))
+        self.keep_on_top_cb = ttk.Checkbutton(controls, text="", variable=self.keep_on_top,
+                                               command=self.toggle_topmost)
+        self.keep_on_top_cb.pack(side=tk.LEFT, padx=(0, 12))
+        self.auto_send_cb = ttk.Checkbutton(controls, text="", variable=self.auto_send)
+        self.auto_send_cb.pack(side=tk.LEFT, padx=(0, 12))
 
-        tk.Button(controls, text="Seleccionar LOG", command=self.select_log, bg=pal.bg_panel,
-                  fg=pal.text_main, relief=tk.FLAT, font=("Calibri", 9), bd=0, padx=10, pady=4,
-                  cursor="hand2").pack(side=tk.LEFT, padx=(0, 6))
-        tk.Button(controls, text="Copiar ultimo", command=self.copy_last_translation, bg=pal.bg_panel,
-                  fg=pal.text_main, relief=tk.FLAT, font=("Calibri", 9), bd=0, padx=10, pady=4,
-                  cursor="hand2").pack(side=tk.LEFT, padx=(0, 6))
-        tk.Button(controls, text="Limpiar chat", command=self.clear_chat, bg=pal.bg_panel,
-                  fg=pal.text_main, relief=tk.FLAT, font=("Calibri", 9), bd=0, padx=10, pady=4,
-                  cursor="hand2").pack(side=tk.LEFT, padx=(0, 6))
+        self.select_log_button = tk.Button(controls, text="", command=self.select_log, bg=pal.bg_panel,
+                                            fg=pal.text_main, relief=tk.FLAT, font=("Calibri", 9), bd=0,
+                                            padx=10, pady=4, cursor="hand2")
+        self.select_log_button.pack(side=tk.LEFT, padx=(0, 6))
+        self.copy_last_button = tk.Button(controls, text="", command=self.copy_last_translation, bg=pal.bg_panel,
+                                           fg=pal.text_main, relief=tk.FLAT, font=("Calibri", 9), bd=0,
+                                           padx=10, pady=4, cursor="hand2")
+        self.copy_last_button.pack(side=tk.LEFT, padx=(0, 6))
+        self.clear_chat_button = tk.Button(controls, text="", command=self.clear_chat, bg=pal.bg_panel,
+                                            fg=pal.text_main, relief=tk.FLAT, font=("Calibri", 9), bd=0,
+                                            padx=10, pady=4, cursor="hand2")
+        self.clear_chat_button.pack(side=tk.LEFT, padx=(0, 6))
 
-        self.pause_button = tk.Button(controls, text="Pausar traduccion",
+        self.pause_button = tk.Button(controls, text="",
                                        command=self.toggle_translation_pause,
                                        bg=pal.bg_panel, fg=pal.text_main,
                                        activebackground=pal.border, activeforeground=pal.text_main,
@@ -424,15 +780,16 @@ class TranslatorApp:
         self.pause_button.pack(side=tk.LEFT)
 
         # --- Config DeepL ---
-        config_frame = ttk.LabelFrame(self.root, text=" Motor de traduccion (DeepL opcional) ")
-        config_frame.pack(padx=14, pady=(0, 14), fill=tk.X)
+        self.config_frame = ttk.LabelFrame(self.root, text="")
+        self.config_frame.pack(padx=14, pady=(0, 14), fill=tk.X)
 
-        inner = tk.Frame(config_frame, bg=pal.bg_panel)
+        inner = tk.Frame(self.config_frame, bg=pal.bg_panel)
         inner.pack(fill=tk.X, padx=10, pady=10)
         inner.columnconfigure(0, weight=1)
 
-        tk.Label(inner, text="DeepL API Key:", bg=pal.bg_panel, fg=pal.text_dim,
-                 font=("Calibri", 9)).grid(row=0, column=0, sticky="w")
+        self.deepl_key_label = tk.Label(inner, text="", bg=pal.bg_panel, fg=pal.text_dim,
+                                         font=("Calibri", 9))
+        self.deepl_key_label.grid(row=0, column=0, sticky="w")
         self.key_entry = tk.Entry(inner, width=40, bg=pal.bg_input, fg=pal.text_main,
                                    insertbackground=pal.text_main, font=("Calibri", 9), show="*",
                                    relief=tk.FLAT, highlightthickness=1, highlightbackground=pal.border)
@@ -440,17 +797,23 @@ class TranslatorApp:
 
         btns = tk.Frame(inner, bg=pal.bg_panel)
         btns.grid(row=1, column=1, padx=(8, 0))
-        tk.Button(btns, text="Activar DeepL", command=self.activate_deepl, bg=pal.accent, fg=pal.accent_text,
-                  relief=tk.FLAT, font=("Calibri", 9, "bold"), bd=0, padx=10, pady=4,
-                  cursor="hand2").pack(side=tk.LEFT, padx=(0, 6))
-        tk.Button(btns, text="Usar Google", command=self.use_google, bg=pal.bg_input, fg=pal.text_main,
-                  relief=tk.FLAT, font=("Calibri", 9), bd=0, padx=10, pady=4,
-                  cursor="hand2").pack(side=tk.LEFT)
+        self.activate_deepl_button = tk.Button(btns, text="", command=self.activate_deepl, bg=pal.accent,
+                                                fg=pal.accent_text, relief=tk.FLAT, font=("Calibri", 9, "bold"),
+                                                bd=0, padx=10, pady=4, cursor="hand2")
+        self.activate_deepl_button.pack(side=tk.LEFT, padx=(0, 6))
+        self.use_google_button = tk.Button(btns, text="", command=self.use_google, bg=pal.bg_input,
+                                            fg=pal.text_main, relief=tk.FLAT, font=("Calibri", 9), bd=0,
+                                            padx=10, pady=4, cursor="hand2")
+        self.use_google_button.pack(side=tk.LEFT)
 
         # Widgets a ocultar en modo invisible
-        self._normal_mode_widgets = [header, controls, config_frame]
+        self._normal_mode_widgets = [header, translate_bar, controls, self.config_frame]
         self._input_frame = input_frame
         self._compact_header_widgets = [self.engine_label, self.status_label, self.game_status_label]
+
+        self.log_status("searching", False)
+        self.update_game_status(False, None)
+        self._refresh_language_texts()
 
     # ------------------------------------------------------------------
     # Configuracion (API key via keyring, con fallback ofuscado)
@@ -462,7 +825,7 @@ class TranslatorApp:
             if KEYRING_OK:
                 api_key = keyring.get_password(KEYRING_SERVICE, KEYRING_USER)
         except Exception as e:
-            self.append_message(f"[Sistema]: No se pudo leer la config de DeepL via keyring: {e}\n", "aviso")
+            self.append_message(self.t("keyring_read_failed", error=e), "aviso")
 
         if not api_key and os.path.exists(FALLBACK_KEY_FILE):
             try:
@@ -479,9 +842,9 @@ class TranslatorApp:
         try:
             self.engine.set_deepl(api_key)
             self.ui_queue.put(("update_engine_label", None))
-            self.ui_queue.put(("system", "DeepL configurado correctamente.\n"))
+            self.ui_queue.put(("system", self.t("deepl_auto_ok")))
         except Exception as e:
-            self.ui_queue.put(("system", f"DeepL no pudo activarse automaticamente: {e}\n"))
+            self.ui_queue.put(("system", self.t("deepl_auto_failed", error=e)))
 
     def save_deepl_key(self, api_key):
         try:
@@ -495,12 +858,12 @@ class TranslatorApp:
             with open(FALLBACK_KEY_FILE, "wb") as f:
                 f.write(_obfuscate(api_key))
         except Exception as e:
-            self.ui_queue.put(("error", f"No se pudo guardar la API Key: {e}"))
+            self.ui_queue.put(("error", self.t("deepl_save_failed", error=e)))
 
     def activate_deepl(self):
         api_key = self.key_entry.get().strip()
         if not api_key:
-            messagebox.showwarning(APP_NAME, "Introduce una API Key de DeepL.")
+            messagebox.showwarning(APP_NAME, self.t("deepl_key_missing"))
             return
         self.set_controls_enabled(False)
         threading.Thread(target=self._activate_deepl_worker, args=(api_key,), daemon=True).start()
@@ -510,9 +873,9 @@ class TranslatorApp:
             self.engine.set_deepl(api_key)
             self.save_deepl_key(api_key)
             self.ui_queue.put(("update_engine_label", None))
-            self.ui_queue.put(("ui_message", "DeepL activado correctamente."))
+            self.ui_queue.put(("ui_message", self.t("deepl_activated_ok")))
         except Exception as e:
-            self.ui_queue.put(("ui_error", f"No se pudo activar DeepL: {e}"))
+            self.ui_queue.put(("ui_error", self.t("deepl_activate_failed", error=e)))
         finally:
             self.ui_queue.put(("set_controls_enabled", True))
 
@@ -520,33 +883,37 @@ class TranslatorApp:
         try:
             self.engine.set_google()
         except Exception as e:
-            messagebox.showerror(APP_NAME, f"No se pudo activar Google Translate:\n{e}")
+            messagebox.showerror(APP_NAME, self.t("google_activate_failed", error=e))
             return
         self.update_engine_label()
-        self.append_message("[Sistema]: Motor cambiado a Google Translate.\n", "aviso")
+        self.append_message(self.t("engine_changed_google"), "aviso")
 
     def update_engine_label(self):
+        prefix = self.t("engine_prefix")
         if self.engine.mode == "DeepL":
-            self.engine_label.config(text="Motor: DEEPL", fg=self.pal.speaker)
+            self.engine_label.config(text=f"{prefix}: {self.t('engine_deepl')}", fg=self.pal.speaker)
         else:
-            self.engine_label.config(text="Motor: GOOGLE", fg=self.pal.accent)
+            self.engine_label.config(text=f"{prefix}: {self.t('engine_google')}", fg=self.pal.accent)
 
     def toggle_translation_pause(self):
         self.translation_paused = not self.translation_paused
         if self.translation_paused:
-            self.pause_button.config(text="Reanudar traduccion")
-            self.append_message("[Sistema]: Traduccion pausada. El LOG sigue siendo vigilado, pero los mensajes nuevos no se traduciran.\n", "aviso")
+            self.pause_button.config(text=self.t("resume_btn"))
+            self.append_message(self.t("translation_paused_msg"), "aviso")
         else:
-            self.pause_button.config(text="Pausar traduccion")
-            self.append_message("[Sistema]: Traduccion reanudada.\n", "aviso")
+            self.pause_button.config(text=self.t("pause_btn"))
+            self.append_message(self.t("translation_resumed_msg"), "aviso")
 
-    def update_game_status(self, is_open, error_note):
-        if error_note:
-            self.game_status_label.config(text=f"JUEGO: {error_note}", fg=self.pal.text_dim)
+    def update_game_status(self, is_open, note_key=None):
+        self._last_game_status_is_open = is_open
+        self._last_game_status_note = note_key
+        prefix = self.t("game_prefix")
+        if note_key:
+            self.game_status_label.config(text=f"{prefix}: {self.t(note_key)}", fg=self.pal.text_dim)
         elif is_open:
-            self.game_status_label.config(text="JUEGO: conectado", fg=self.pal.accent)
+            self.game_status_label.config(text=f"{prefix}: {self.t('connected')}", fg=self.pal.accent)
         else:
-            self.game_status_label.config(text="JUEGO: esperando...", fg=self.pal.warning)
+            self.game_status_label.config(text=f"{prefix}: {self.t('waiting')}", fg=self.pal.warning)
 
     def set_controls_enabled(self, enabled):
         state = tk.NORMAL if enabled else tk.DISABLED
@@ -571,7 +938,7 @@ class TranslatorApp:
         abierta, para poder mostrar si esta 'conectado' o 'esperando' -
         util para saber de un vistazo si hace falta reabrir el juego."""
         if gw is None:
-            self.ui_queue.put(("game_status", (False, "sin pygetwindow")))
+            self.ui_queue.put(("game_status", (False, "no_pygetwindow")))
             return
         was_open = None
         while self.running:
@@ -587,16 +954,20 @@ class TranslatorApp:
 
     def select_log(self):
         path = filedialog.askopenfilename(
-            title="Seleccionar log de Neverwinter",
-            filetypes=[("Log de Neverwinter", "*.txt"), ("Todos los archivos", "*.*")])
+            title=self.t("select_log_dialog_title"),
+            filetypes=[("Log", "*.txt"), ("*", "*.*")])
         if path:
             self.log_path = path
-            self.log_status(f"LOG seleccionado: {os.path.basename(path)}", found=True)
-            self.append_message(f"[Sistema]: LOG seleccionado manualmente: {path}\n", "aviso")
+            self.log_status("log_selected", True, name=os.path.basename(path))
+            self.append_message(self.t("log_selected_msg", path=path), "aviso")
 
-    def log_status(self, text, found):
+    def log_status(self, key, found, **fmt):
+        self._last_log_status_key = key
+        self._last_log_status_found = found
+        self._last_log_status_kwargs = fmt
         color = self.pal.accent if found else self.pal.warning
-        self.status_label.config(text=f"LOG: {text}", fg=color)
+        prefix = self.t("log_prefix")
+        self.status_label.config(text=f"{prefix}: {self.t(key, **fmt)}", fg=color)
 
     @staticmethod
     def _decode_line(raw_bytes):
@@ -614,15 +985,15 @@ class TranslatorApp:
 
     def monitor_log_file(self):
         while self.running and not self.log_path:
-            self.ui_queue.put(("log_status", ("buscando...", False)))
+            self.ui_queue.put(("log_status", ("searching", False)))
             self.log_path = find_log_file()
             time.sleep(1)
 
         if not self.running:
             return
 
-        self.ui_queue.put(("log_status", ("conectado", True)))
-        self.ui_queue.put(("system", "LOG de Neverwinter detectado. Traduciendo en tiempo real.\n"))
+        self.ui_queue.put(("log_status", ("connected", True)))
+        self.ui_queue.put(("system", self.t("log_detected_status")))
 
         self.read_log_file()
 
@@ -643,7 +1014,7 @@ class TranslatorApp:
                     f.seek(0, os.SEEK_END)
                     last_inode = current_inode
                     if last_inode is not None:
-                        self.ui_queue.put(("system", "LOG conectado. Traduccion en tiempo real.\n"))
+                        self.ui_queue.put(("system", self.t("log_connected_status")))
 
                 # Si el archivo se hizo mas chico que nuestra posicion actual
                 # (mismo inodo, pero el juego lo trunco/reinicio al arrancar
@@ -657,7 +1028,7 @@ class TranslatorApp:
                     f.seek(0)
                     self.ui_queue.put((
                         "system",
-                        "El LOG se reinicio (nueva sesion de Neverwinter). Reconectando...\n",
+                        self.t("log_reset_status"),
                     ))
 
                 raw_line = f.readline()
@@ -673,7 +1044,7 @@ class TranslatorApp:
                 if clean_line:
                     self.process_log_line(clean_line)
         except Exception as e:
-            self.ui_queue.put(("error", f"Error leyendo el LOG: {e}"))
+            self.ui_queue.put(("error", self.t("log_read_error", error=e)))
         finally:
             if f:
                 f.close()
@@ -707,7 +1078,7 @@ class TranslatorApp:
         try:
             self.translation_queue.put((speaker, text), timeout=0.5)
         except queue.Full:
-            self.ui_queue.put(("error", "La cola de traduccion esta llena; se descarto un mensaje."))
+            self.ui_queue.put(("error", self.t("queue_full_error")))
 
     def translation_worker(self):
         while self.running:
@@ -722,11 +1093,11 @@ class TranslatorApp:
             try:
                 if self.translation_paused:
                     continue
-                translated = self.engine.translate(text, source_lang='en', target_lang='es')
+                translated = self.engine.translate(text, source_lang=self.translate_source_lang, target_lang=self.translate_target_lang)
                 self.last_translation = translated
                 self.ui_queue.put(("chat", {"speaker": speaker, "english": text, "spanish": translated}))
             except Exception as e:
-                self.ui_queue.put(("error", f"Error traduciendo '{text[:40]}': {e}"))
+                self.ui_queue.put(("error", self.t("translate_error", snippet=text[:40], error=e)))
             finally:
                 self.translation_queue.task_done()
 
@@ -735,47 +1106,46 @@ class TranslatorApp:
     # ------------------------------------------------------------------
 
     def dispatch_to_game(self, event):
-        text_es = self.input_box.get().strip()
-        if not text_es:
+        text_own = self.input_box.get().strip()
+        if not text_own:
             return
         auto_send = self.auto_send.get()
         self.input_box.delete(0, tk.END)
-        threading.Thread(target=self._send_worker, args=(text_es, auto_send), daemon=True).start()
+        threading.Thread(target=self._send_worker, args=(text_own, auto_send), daemon=True).start()
 
-    def _send_worker(self, text_es, auto_send):
+    def _send_worker(self, text_own, auto_send):
         with self.send_lock:
             try:
                 # Usa el mismo caché estricto que las traducciones recibidas.
                 # La clave incluye texto exacto + idiomas + motor, por lo que
                 # Google/DeepL y frases diferentes nunca se mezclan.
-                text_en = self.engine.translate(text_es, source_lang='es', target_lang='en', use_cache=True)
+                text_target = self.engine.translate(text_own, source_lang=self.translate_target_lang, target_lang=self.translate_source_lang, use_cache=True)
             except Exception as e:
-                self.ui_queue.put(("error", f"Error preparando el envio: {e}"))
+                self.ui_queue.put(("error", self.t("send_prepare_error", error=e)))
                 return
 
             if auto_send:
                 try:
-                    self.send_text_to_nwn(text_en)
-                    self.ui_queue.put(("outgoing", {"text": text_en, "sent": True}))
+                    self.send_text_to_nwn(text_target)
+                    self.ui_queue.put(("outgoing", {"text": text_target, "sent": True}))
                 except Exception as e:
                     self.ui_queue.put(("error", str(e)))
             else:
-                self.ui_queue.put(("outgoing", {"text": text_en, "sent": False}))
+                self.ui_queue.put(("outgoing", {"text": text_target, "sent": False}))
 
     def find_nwn_window(self):
         if gw is None:
-            raise RuntimeError("Falta pygetwindow.\nEjecuta: python -m pip install pygetwindow")
+            raise RuntimeError(self.t("no_pygetwindow_error"))
         for title in ("Neverwinter Nights: Enhanced Edition", "Neverwinter Nights"):
             windows = gw.getWindowsWithTitle(title)
             windows = [w for w in windows if w.visible]
             if windows:
                 return windows[0]
-        raise RuntimeError("No se encontro la ventana de Neverwinter Nights.\n"
-                            "Abre Neverwinter Nights y vuelve a intentarlo.")
+        raise RuntimeError(self.t("window_not_found_error"))
 
     def send_text_to_nwn(self, text):
         if pyautogui is None:
-            raise RuntimeError("Falta PyAutoGUI.\nEjecuta: python -m pip install pyautogui")
+            raise RuntimeError(self.t("no_pyautogui_error"))
         window = self.find_nwn_window()
         title = (getattr(window, "title", "") or "").lower()
         if "neverwinter nights" not in title:
@@ -811,7 +1181,7 @@ class TranslatorApp:
                 elif action == "error":
                     self.display_error(data)
                 elif action == "system":
-                    self.append_message(f"[Sistema]: {data}", "aviso")
+                    self.append_message(f"[{self.t('system_prefix')}]: {data}", "aviso")
                 elif action == "update_engine_label":
                     self.update_engine_label()
                 elif action == "ui_message":
@@ -918,7 +1288,7 @@ class TranslatorApp:
         self.root.clipboard_clear()
         self.root.clipboard_append(speaker)
         self.root.update_idletasks()
-        self.append_message(f"[Sistema]: Nombre copiado: {speaker}\n", "aviso")
+        self.append_message(self.t("name_copied", speaker=speaker), "aviso")
         return "break"
 
     @staticmethod
@@ -931,13 +1301,15 @@ class TranslatorApp:
         self.chat_message_counter += 1
         if data["speaker"]:
             self.append_message(f"{data['speaker']}\n", self._get_speaker_tag(data["speaker"], self.chat_message_counter))
-        self.append_message(f"   ESP: {data['spanish']}\n", "traducido")
-        self.append_message(f"   ENG: {data['english']}\n", "original")
+        prefix_mine = LANGUAGE_ABBR.get(self.translate_target_lang, self.translate_target_lang.upper())
+        prefix_other = LANGUAGE_ABBR.get(self.translate_source_lang, self.translate_source_lang.upper())
+        self.append_message(f"   {prefix_mine}: {data['spanish']}\n", "traducido")
+        self.append_message(f"   {prefix_other}: {data['english']}\n", "original")
         self.append_message("\u2500" * 40 + "\n", "divisor")
         self.trim_chat()
 
     def display_outgoing(self, data):
-        prefix = "Enviado a Neverwinter" if data["sent"] else "Envio automatico desactivado"
+        prefix = self.t("sent_to_game") if data["sent"] else self.t("auto_send_off")
         self.append_message(f"--> {prefix}: {data['text']}\n", "saliente")
         self.append_message("\u2500" * 40 + "\n", "divisor")
         self.trim_chat()
@@ -970,11 +1342,11 @@ class TranslatorApp:
 
     def copy_last_translation(self):
         if not self.last_translation:
-            messagebox.showinfo(APP_NAME, "Todavia no hay una traduccion.")
+            messagebox.showinfo(APP_NAME, self.t("no_translation_yet"))
             return
         self.root.clipboard_clear()
         self.root.clipboard_append(self.last_translation)
-        self.append_message("[Sistema]: Ultima traduccion copiada al portapapeles.\n", "aviso")
+        self.append_message(self.t("last_translation_copied"), "aviso")
 
     def clear_chat(self):
         self.chat_box.config(state='normal')
@@ -995,9 +1367,7 @@ class TranslatorApp:
                 self._native_hotkey_thread = None
                 return
             except Exception as e:
-                self.append_message(
-                    f"[Sistema]: No se pudo registrar el atajo global F9 ({e}). "
-                    "Se usara el detector nativo de Windows.\n", "aviso")
+                self.append_message(self.t("hotkey_register_failed", error=e), "aviso")
 
         # Fallback sin dependencia externa: Windows consulta el estado global de F9.
         # Esto evita perder F9 solo porque la libreria 'keyboard' no este instalada.
@@ -1008,16 +1378,10 @@ class TranslatorApp:
                 daemon=True,
             )
             self._native_hotkey_thread.start()
-            self.append_message(
-                "[Sistema]: Atajo global F9 activado mediante Windows (sin libreria 'keyboard').\n",
-                "aviso"
-            )
+            self.append_message(self.t("hotkey_registered_ok"), "aviso")
         else:
             self._native_hotkey_thread = None
-            self.append_message(
-                "[Sistema]: Atajo global F9 no disponible en este sistema. "
-                "F9 funcionara con esta ventana en foco.\n", "aviso"
-            )
+            self.append_message(self.t("hotkey_unavailable"), "aviso")
 
     def _native_f9_watcher(self):
         """Detector global de F9 para Windows cuando 'keyboard' no esta disponible."""
@@ -1189,12 +1553,12 @@ class TranslatorApp:
         except Exception:
             pass
 
-        header, controls, config_frame = self._normal_mode_widgets
+        header, translate_bar, controls, config_frame = self._normal_mode_widgets
         input_frame = self._input_frame
         chat_frame = self.chat_box.master
 
         # Limpiar tanto pack como place para evitar restos del overlay.
-        for widget in (header, controls, config_frame, chat_frame, input_frame):
+        for widget in (header, translate_bar, controls, config_frame, chat_frame, input_frame):
             try:
                 widget.pack_forget()
             except Exception:
@@ -1273,11 +1637,11 @@ class TranslatorApp:
     def _repack_normal_widgets(self):
         """Restaura el layout normal. La barra de escritura queda anclada
         al borde inferior y mantiene una altura minima fija."""
-        header, controls, config_frame = self._normal_mode_widgets
+        header, translate_bar, controls, config_frame = self._normal_mode_widgets
         input_frame = self._input_frame
         chat_frame = self.chat_box.master
 
-        for widget in (header, controls, config_frame, chat_frame, input_frame):
+        for widget in (header, translate_bar, controls, config_frame, chat_frame, input_frame):
             try:
                 widget.pack_forget()
             except Exception:
@@ -1303,9 +1667,11 @@ class TranslatorApp:
         # Los indicadores se ocultan solo en compacto; al volver a normal
         # deben volver a administrarse explícitamente por pack.
         self.engine_label.pack(side=tk.LEFT, padx=(12, 0))
+        self.interface_lang_combo.pack(side=tk.RIGHT, padx=(8, 0))
         self.invisible_btn.pack(side=tk.RIGHT)
         self.status_label.pack(side=tk.RIGHT, padx=(0, 14))
         self.game_status_label.pack(side=tk.RIGHT, padx=(0, 14))
+        translate_bar.pack(side=tk.TOP, fill=tk.X, padx=14, pady=(0, 6))
         config_frame.pack(side=tk.TOP, padx=14, pady=(0, 14), fill=tk.X)
         controls.pack(side=tk.TOP, padx=14, pady=(0, 8), fill=tk.X)
 
