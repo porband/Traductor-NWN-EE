@@ -23,8 +23,11 @@ class ChatParser:
     ]
     OOC_PATTERNS = [re.compile(r"\[OOC\]", re.IGNORECASE), re.compile(r"^OOC:", re.IGNORECASE)]
     URL_PATTERN = re.compile(r"^(https?://|www\.)", re.IGNORECASE)
-    SPEAKER_PATTERN = re.compile(r"^(\[.*?\]\s*.*?:\s*\[.*?\])\s*(.*)$")
-    SIMPLE_SPEAKER_PATTERN = re.compile(r"^(.*?:)\s*(.*)$")
+    # Los grupos capturan solo el nombre limpio del hablante (sin la hora
+    # ni las etiquetas de canal entre corchetes que agrega el juego), para
+    # que lo que se muestra en pantalla y lo que se copia sea lo mismo.
+    SPEAKER_PATTERN = re.compile(r"^\[.*?\]\s*(.*?):\s*\[.*?\]\s*(.*)$")
+    SIMPLE_SPEAKER_PATTERN = re.compile(r"^(.*?):\s*(.*)$")
 
     def should_ignore(self, line):
         return any(pattern.search(line) for pattern in self.IGNORE_PATTERNS)

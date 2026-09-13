@@ -62,7 +62,7 @@ class ChatParserTests(unittest.TestCase):
         line = "<c=red>[DM] Aria: [Common] Hello there</c>"
         self.assertEqual(
             self.parser.parse(line),
-            ("[DM] Aria: [Common]", "Hello there"),
+            ("Aria", "Hello there"),
         )
 
     def test_ignora_ooc_y_enlaces(self):

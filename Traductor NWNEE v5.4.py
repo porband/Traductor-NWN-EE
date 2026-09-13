@@ -96,7 +96,7 @@ DEFAULT_LOG_NAME = "nwclientlog1.txt"
 # Config y fallback de guardado (si keyring no esta disponible en el sistema)
 APPDATA = os.environ.get("APPDATA", os.path.join(os.path.expanduser("~"), "AppData", "Roaming"))
 CONFIG_DIR = os.path.join(APPDATA, "TraductorNWN")
-FALLBACK_KEY_FILE = os.path.join(CONFIG_DIR, "config_traductor.dat")
+FALLBACK_KEY_FILE = os.path.join(CONFIG_DIR, "perfil_traductor.dat")
 _OBFUSCATION_KEY = b"nwn-translator-key"
 
 
@@ -211,7 +211,7 @@ class TranslatorApp:
         self.root.attributes("-topmost", self.keep_on_top.get())
         self.root.protocol("WM_DELETE_WINDOW", self.close)
 
-        self.load_config()
+        self.restore_saved_settings()
         self.start_log_watcher()
         self.translation_thread = threading.Thread(target=self.translation_worker, name="NWN-Translation-Worker", daemon=True)
         self.translation_thread.start()
@@ -369,13 +369,13 @@ class TranslatorApp:
         scrollbar.config(command=self.chat_box.yview)
         self.chat_box.bind("<Double-Button-1>", self.copy_speaker_from_click)
 
-        self.chat_box.tag_config("sistema", foreground=pal.system, font=("Calibri", 9, "italic"))
-        self.chat_box.tag_config("personaje", foreground=pal.speaker, font=("Georgia", 11, "bold"))
-        self.chat_box.tag_config("espanol", foreground=pal.spanish, font=("Calibri", 11))
-        self.chat_box.tag_config("ingles", foreground=pal.english, font=("Calibri", 10))
-        self.chat_box.tag_config("envio", foreground=pal.outgoing, font=("Calibri", 11, "bold"))
+        self.chat_box.tag_config("aviso", foreground=pal.system, font=("Calibri", 9, "italic"))
+        self.chat_box.tag_config("hablante", foreground=pal.speaker, font=("Georgia", 11, "bold"))
+        self.chat_box.tag_config("traducido", foreground=pal.spanish, font=("Calibri", 11))
+        self.chat_box.tag_config("original", foreground=pal.english, font=("Calibri", 10))
+        self.chat_box.tag_config("saliente", foreground=pal.outgoing, font=("Calibri", 11, "bold"))
         self.chat_box.tag_config("error", foreground=pal.error, font=("Calibri", 10, "bold"))
-        self.chat_box.tag_config("separador", foreground=pal.separator, font=("Calibri", 4))
+        self.chat_box.tag_config("divisor", foreground=pal.separator, font=("Calibri", 4))
 
         # --- Entrada de texto ---
         input_frame = tk.Frame(self.root, bg=pal.bg, height=48)
@@ -388,9 +388,9 @@ class TranslatorApp:
                                    highlightbackground=pal.border, highlightcolor=pal.accent,
                                    selectbackground=pal.selection, selectforeground=pal.text_main)
         self.input_box.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=8, padx=(0, 8))
-        self.input_box.bind("<Return>", self.send_to_game)
+        self.input_box.bind("<Return>", self.dispatch_to_game)
 
-        self.send_button = tk.Button(input_frame, text="Enviar", command=lambda: self.send_to_game(None),
+        self.send_button = tk.Button(input_frame, text="Enviar", command=lambda: self.dispatch_to_game(None),
                                       bg=pal.accent, fg=pal.accent_text, activebackground=pal.accent_hover,
                                       relief=tk.FLAT, font=("Calibri", 10, "bold"), bd=0, padx=16,
                                       cursor="hand2")
@@ -456,13 +456,13 @@ class TranslatorApp:
     # Configuracion (API key via keyring, con fallback ofuscado)
     # ------------------------------------------------------------------
 
-    def load_config(self):
+    def restore_saved_settings(self):
         api_key = None
         try:
             if KEYRING_OK:
                 api_key = keyring.get_password(KEYRING_SERVICE, KEYRING_USER)
         except Exception as e:
-            self.log_message(f"[Sistema]: No se pudo leer la config de DeepL via keyring: {e}\n", "sistema")
+            self.append_message(f"[Sistema]: No se pudo leer la config de DeepL via keyring: {e}\n", "aviso")
 
         if not api_key and os.path.exists(FALLBACK_KEY_FILE):
             try:
@@ -523,7 +523,7 @@ class TranslatorApp:
             messagebox.showerror(APP_NAME, f"No se pudo activar Google Translate:\n{e}")
             return
         self.update_engine_label()
-        self.log_message("[Sistema]: Motor cambiado a Google Translate.\n", "sistema")
+        self.append_message("[Sistema]: Motor cambiado a Google Translate.\n", "aviso")
 
     def update_engine_label(self):
         if self.engine.mode == "DeepL":
@@ -535,10 +535,10 @@ class TranslatorApp:
         self.translation_paused = not self.translation_paused
         if self.translation_paused:
             self.pause_button.config(text="Reanudar traduccion")
-            self.log_message("[Sistema]: Traduccion pausada. El LOG sigue siendo vigilado, pero los mensajes nuevos no se traduciran.\n", "sistema")
+            self.append_message("[Sistema]: Traduccion pausada. El LOG sigue siendo vigilado, pero los mensajes nuevos no se traduciran.\n", "aviso")
         else:
             self.pause_button.config(text="Pausar traduccion")
-            self.log_message("[Sistema]: Traduccion reanudada.\n", "sistema")
+            self.append_message("[Sistema]: Traduccion reanudada.\n", "aviso")
 
     def update_game_status(self, is_open, error_note):
         if error_note:
@@ -560,7 +560,7 @@ class TranslatorApp:
     # ------------------------------------------------------------------
 
     def start_log_watcher(self):
-        self.log_thread = threading.Thread(target=self.watch_log, name="NWN-Log-Watcher", daemon=True)
+        self.log_thread = threading.Thread(target=self.monitor_log_file, name="NWN-Log-Watcher", daemon=True)
         self.log_thread.start()
         self.game_watch_thread = threading.Thread(target=self.watch_game_window,
                                                     name="NWN-Window-Watcher", daemon=True)
@@ -592,7 +592,7 @@ class TranslatorApp:
         if path:
             self.log_path = path
             self.log_status(f"LOG seleccionado: {os.path.basename(path)}", found=True)
-            self.log_message(f"[Sistema]: LOG seleccionado manualmente: {path}\n", "sistema")
+            self.append_message(f"[Sistema]: LOG seleccionado manualmente: {path}\n", "aviso")
 
     def log_status(self, text, found):
         color = self.pal.accent if found else self.pal.warning
@@ -612,7 +612,7 @@ class TranslatorApp:
         except OSError:
             return None
 
-    def watch_log(self):
+    def monitor_log_file(self):
         while self.running and not self.log_path:
             self.ui_queue.put(("log_status", ("buscando...", False)))
             self.log_path = find_log_file()
@@ -734,7 +734,7 @@ class TranslatorApp:
     # Envio de texto al juego
     # ------------------------------------------------------------------
 
-    def send_to_game(self, event):
+    def dispatch_to_game(self, event):
         text_es = self.input_box.get().strip()
         if not text_es:
             return
@@ -811,7 +811,7 @@ class TranslatorApp:
                 elif action == "error":
                     self.display_error(data)
                 elif action == "system":
-                    self.log_message(f"[Sistema]: {data}", "sistema")
+                    self.append_message(f"[Sistema]: {data}", "aviso")
                 elif action == "update_engine_label":
                     self.update_engine_label()
                 elif action == "ui_message":
@@ -841,7 +841,7 @@ class TranslatorApp:
         mensajes: asi un nombre no cambia de color durante una sesion larga.
         """
         if not speaker:
-            return "personaje"
+            return "hablante"
 
         key = re.sub(r"\s+", " ", speaker.strip()).casefold()
 
@@ -881,25 +881,25 @@ class TranslatorApp:
         """Cambia los colores de los tags sin recrear el contenido del chat."""
         if enabled:
             text_color = self.pal.overlay_text
-            self.chat_box.tag_config("sistema", foreground=text_color, font=("Calibri", 10, "bold"))
-            self.chat_box.tag_config("espanol", foreground=text_color, font=("Calibri", 11, "bold"))
+            self.chat_box.tag_config("aviso", foreground=text_color, font=("Calibri", 10, "bold"))
+            self.chat_box.tag_config("traducido", foreground=text_color, font=("Calibri", 11, "bold"))
             # En invisible el ingles queda claramente secundario: mas pequeno
             # para que el ojo encuentre primero la traduccion al espanol.
-            self.chat_box.tag_config("ingles", foreground=text_color, font=("Calibri", 8))
-            self.chat_box.tag_config("envio", foreground=text_color, font=("Calibri", 11, "bold"))
+            self.chat_box.tag_config("original", foreground=text_color, font=("Calibri", 8))
+            self.chat_box.tag_config("saliente", foreground=text_color, font=("Calibri", 11, "bold"))
             self.chat_box.tag_config("error", foreground=text_color, font=("Calibri", 11, "bold"))
-            self.chat_box.tag_config("separador", foreground=self._transparent_tag_color, font=("Calibri", 4))
+            self.chat_box.tag_config("divisor", foreground=self._transparent_tag_color, font=("Calibri", 4))
             # El overlay vuelve transparente el fondo, pero conserva los
             # colores de los nombres para identificar a cada persona.
             for tag_name, color in self.speaker_color_map.items():
                 self.chat_box.tag_config(tag_name, foreground=color, font=("Georgia", 11, "bold"))
         else:
-            self.chat_box.tag_config("sistema", foreground=self.pal.system, font=("Calibri", 9, "italic"))
-            self.chat_box.tag_config("espanol", foreground=self.pal.spanish, font=("Calibri", 11))
-            self.chat_box.tag_config("ingles", foreground=self.pal.english, font=("Calibri", 10))
-            self.chat_box.tag_config("envio", foreground=self.pal.outgoing, font=("Calibri", 11, "bold"))
+            self.chat_box.tag_config("aviso", foreground=self.pal.system, font=("Calibri", 9, "italic"))
+            self.chat_box.tag_config("traducido", foreground=self.pal.spanish, font=("Calibri", 11))
+            self.chat_box.tag_config("original", foreground=self.pal.english, font=("Calibri", 10))
+            self.chat_box.tag_config("saliente", foreground=self.pal.outgoing, font=("Calibri", 11, "bold"))
             self.chat_box.tag_config("error", foreground=self.pal.error, font=("Calibri", 10, "bold"))
-            self.chat_box.tag_config("separador", foreground=self.pal.separator, font=("Calibri", 4))
+            self.chat_box.tag_config("divisor", foreground=self.pal.separator, font=("Calibri", 4))
             for tag_name, color in self.speaker_color_map.items():
                 self.chat_box.tag_config(tag_name, foreground=color, font=("Georgia", 11, "bold"))
 
@@ -918,7 +918,7 @@ class TranslatorApp:
         self.root.clipboard_clear()
         self.root.clipboard_append(speaker)
         self.root.update_idletasks()
-        self.log_message(f"[Sistema]: Nombre copiado: {speaker}\n", "sistema")
+        self.append_message(f"[Sistema]: Nombre copiado: {speaker}\n", "aviso")
         return "break"
 
     @staticmethod
@@ -930,23 +930,23 @@ class TranslatorApp:
     def display_chat(self, data):
         self.chat_message_counter += 1
         if data["speaker"]:
-            self.log_message(f"{data['speaker']}\n", self._get_speaker_tag(data["speaker"], self.chat_message_counter))
-        self.log_message(f"   ESP: {data['spanish']}\n", "espanol")
-        self.log_message(f"   ENG: {data['english']}\n", "ingles")
-        self.log_message("\u2500" * 40 + "\n", "separador")
+            self.append_message(f"{data['speaker']}\n", self._get_speaker_tag(data["speaker"], self.chat_message_counter))
+        self.append_message(f"   ESP: {data['spanish']}\n", "traducido")
+        self.append_message(f"   ENG: {data['english']}\n", "original")
+        self.append_message("\u2500" * 40 + "\n", "divisor")
         self.trim_chat()
 
     def display_outgoing(self, data):
         prefix = "Enviado a Neverwinter" if data["sent"] else "Envio automatico desactivado"
-        self.log_message(f"--> {prefix}: {data['text']}\n", "envio")
-        self.log_message("\u2500" * 40 + "\n", "separador")
+        self.append_message(f"--> {prefix}: {data['text']}\n", "saliente")
+        self.append_message("\u2500" * 40 + "\n", "divisor")
         self.trim_chat()
 
     def display_error(self, message):
-        self.log_message(f"[ERROR] {message}\n", "error")
+        self.append_message(f"[ERROR] {message}\n", "error")
         self.trim_chat()
 
-    def log_message(self, text, tag=None):
+    def append_message(self, text, tag=None):
         self.chat_box.config(state='normal')
         fraction = self.chat_box.yview()[1]
         if tag:
@@ -974,7 +974,7 @@ class TranslatorApp:
             return
         self.root.clipboard_clear()
         self.root.clipboard_append(self.last_translation)
-        self.log_message("[Sistema]: Ultima traduccion copiada al portapapeles.\n", "sistema")
+        self.append_message("[Sistema]: Ultima traduccion copiada al portapapeles.\n", "aviso")
 
     def clear_chat(self):
         self.chat_box.config(state='normal')
@@ -995,9 +995,9 @@ class TranslatorApp:
                 self._native_hotkey_thread = None
                 return
             except Exception as e:
-                self.log_message(
+                self.append_message(
                     f"[Sistema]: No se pudo registrar el atajo global F9 ({e}). "
-                    "Se usara el detector nativo de Windows.\n", "sistema")
+                    "Se usara el detector nativo de Windows.\n", "aviso")
 
         # Fallback sin dependencia externa: Windows consulta el estado global de F9.
         # Esto evita perder F9 solo porque la libreria 'keyboard' no este instalada.
@@ -1008,15 +1008,15 @@ class TranslatorApp:
                 daemon=True,
             )
             self._native_hotkey_thread.start()
-            self.log_message(
+            self.append_message(
                 "[Sistema]: Atajo global F9 activado mediante Windows (sin libreria 'keyboard').\n",
-                "sistema"
+                "aviso"
             )
         else:
             self._native_hotkey_thread = None
-            self.log_message(
+            self.append_message(
                 "[Sistema]: Atajo global F9 no disponible en este sistema. "
-                "F9 funcionara con esta ventana en foco.\n", "sistema"
+                "F9 funcionara con esta ventana en foco.\n", "aviso"
             )
 
     def _native_f9_watcher(self):
